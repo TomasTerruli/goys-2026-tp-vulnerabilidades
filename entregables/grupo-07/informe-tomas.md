@@ -1,4 +1,3 @@
-
 # Informe individual — Grupo 07
 
 **Integrante:** Tomás Terruli  
@@ -9,69 +8,53 @@
 
 ## 1. Situación y riesgo
 
-Se analizaron tres servicios de un entorno de laboratorio: un portal web basado en PHP, una API desarrollada en Node.js y un servicio interno en Python. El objetivo fue determinar su exposición a vulnerabilidades críticas, definir prioridades de intervención y comprobar que las actualizaciones no afectaran su funcionamiento básico.
+Se analizaron tres servicios de un laboratorio Docker: un portal PHP, una API Node.js y un servicio Python. El objetivo fue identificar vulnerabilidades críticas, priorizar su corrección y verificar el funcionamiento posterior.
 
-El portal utilizaba PHP 8.3.35 con Apache y mod_php, una configuración afectada por las vulnerabilidades CVE-2026-109618 y CVE-2026-109619, conocidas como PHP2Shell. Estas fallas pueden permitir ejecución remota de código sin autenticación bajo determinadas condiciones. Su gravedad es elevada y existe evidencia pública de explotación activa.
+El portal utilizaba PHP 8.3.35 con Apache mod_php, afectado por PHP2Shell (CVE-2026-109618 y CVE-2026-109619), vulnerabilidades que pueden permitir ejecución remota de código sin autenticación. La API utilizaba Node.js 22.23.3 y Python incorporaba Brotli 1.0.9, componentes afectados por Node2Shell (CVE-2026-111497).
 
-La API utilizaba Node.js 22.23.3, afectado por CVE-2026-111497, vinculada con el decodificador Brotli. Este componente procesa información comprimida y, si recibe contenido especialmente diseñado, podría provocar fallos del servicio o comprometer su seguridad. El servicio Python también utilizaba una versión vulnerable de Brotli, la 1.0.9.
-
-Aunque las tres vulnerabilidades requieren atención, ninguno de los servicios estaba expuesto directamente a Internet en el laboratorio. Por lo tanto, el riesgo observado debe distinguirse de un posible entorno de producción, donde la exposición pública, los datos procesados y la criticidad comercial podrían aumentar considerablemente el impacto.
+Las vulnerabilidades tienen CVSS 9.2 y antecedentes de explotación activa. Sin embargo, los tres servicios estaban aislados de Internet en el laboratorio. En producción, el riesgo dependería de la exposición, los datos procesados y la criticidad de cada servicio.
 
 ## 2. Plan de acción priorizado
 
-| Acción | Activo | Plazo propuesto | Responsable | Reversión |
+| Acción | Activo | Plazo | Responsable | Reversión |
 |---|---|---|---|---|
-| Aplicar mitigación temporal y actualizar PHP a 8.3.36. | Portal PHP | Primeras 2 horas | Administrador de infraestructura | Restaurar la imagen anterior únicamente con autorización y controles compensatorios. |
-| Actualizar Node.js a 22.23.4 y reducir la exposición al contenido Brotli no necesario. | API Node.js | Primeras 4 horas | Equipo de desarrollo e infraestructura | Volver temporalmente a la imagen anterior si existe una falla funcional grave, documentando el riesgo. |
-| Actualizar Brotli a 1.2.1 y restringir el acceso al servicio. | Servicio Python | Primeras 24 horas | Administrador del servicio | Restaurar la versión anterior solo bajo un procedimiento de emergencia. |
-| Verificar funcionamiento, registrar evidencias y mantener monitoreo. | Todos los servicios | Después de cada cambio | Equipo de operaciones y seguridad | Detener el cambio y aplicar el procedimiento de recuperación aprobado. |
+| Mitigar y actualizar PHP a 8.3.36. | Portal PHP | 2 h | Infraestructura | Restaurar imagen anterior con autorización. |
+| Actualizar Node.js a 22.23.4 y limitar Brotli innecesario. | API Node.js | 4 h | Desarrollo e infraestructura | Restaurar imagen anterior bajo control. |
+| Actualizar Brotli a 1.2.1 y restringir accesos. | Python | 24 h | Administrador del servicio | Restaurar versión anterior si fuera indispensable. |
+| Verificar servicios y registrar evidencias. | Todos | Tras cada cambio | Operaciones y seguridad | Detener o revertir el cambio si falla. |
 
-El portal PHP se priorizó por la combinación de una vulnerabilidad crítica, explotación activa conocida y una configuración de Apache especialmente sensible. La API Node.js se ubicó en segundo lugar por su capacidad de procesar contenido HTTP mediante Brotli y por la explotación conocida de la vulnerabilidad asociada.
+Se priorizó PHP por la explotación conocida y el mayor riesgo asociado a mod_php; luego Node.js por el procesamiento de contenido Brotli, y finalmente Python por su menor exposición supuesta. El orden cambiaría ante evidencia de compromiso, exposición pública o mayor criticidad de otro servicio.
 
-El servicio Python quedó en tercer lugar porque se consideró interno en el escenario de producción supuesto. Este orden debería modificarse si se detectara exposición pública, información especialmente sensible o indicadores de compromiso en cualquiera de los servicios.
+En el laboratorio se deshabilitó `session.upload_progress.enabled` como mitigación temporal y posteriormente se aplicaron los parches. PHP quedó en 8.3.36, Node.js en 22.23.4 y Brotli de Python en 1.2.1. Los tres servicios permanecieron saludables y respondieron correctamente a las pruebas HTTP.
 
-En el laboratorio se aplicó primero una mitigación temporal sobre PHP, deshabilitando `session.upload_progress.enabled`. Posteriormente, se actualizaron los tres servicios a las versiones corregidas.
-
-Las verificaciones posteriores mostraron que todos los contenedores permanecieron funcionando. PHP respondió correctamente a una solicitud HTTP, Node.js devolvió información válida de su API y Python respondió con HTTP 200. Las pruebas fueron básicas y no reemplazan una validación integral de producción.
+Los plazos corresponden a una propuesta para producción. Las reversiones fueron documentadas, pero no ejecutadas porque reintroducirían versiones vulnerables.
 
 ## 3. Indicadores de compromiso
 
-Para investigar un posible compromiso se deben correlacionar los registros de solicitudes HTTP, los procesos ejecutados y los eventos de seguridad.
+Una señal sospechosa sería que Apache, Node.js o Python ejecutaran inesperadamente procesos como `sh`, `bash`, `curl` o `wget`. También deberían investigarse solicitudes HTTP anómalas, descargas inesperadas y modificaciones no autorizadas.
 
-Una señal relevante sería encontrar que un proceso del servidor web Apache inicia inesperadamente una consola de comandos o una herramienta para descargar contenido. En Node.js también resultaría sospechoso que el proceso de la aplicación ejecutara programas como `sh`, `bash`, `curl` o `wget` sin una justificación operativa.
+Para confirmar un compromiso se necesitaría correlacionar procesos, horarios, solicitudes, usuarios y registros del sistema. Para descartarlo razonablemente se requerirían registros completos, comprobaciones de integridad y revisión de accesos.
 
-En el registro de auditoría del laboratorio se incluyen ejemplos de relaciones entre procesos que podrían indicar actividad anómala. Sin embargo, estas señales por sí solas no permiten determinar con certeza que exista un ataque exitoso. Es necesario relacionarlas con horarios, usuarios, solicitudes y comportamiento esperado de cada servicio.
+El `audit.log` del laboratorio permite identificar comportamientos sospechosos, pero no incluye información suficiente de usuarios e IP de origen. Por eso, una alerta aislada no demuestra un ataque exitoso y la ausencia de alertas tampoco descarta compromisos anteriores.
 
-Para descartar razonablemente un incidente se necesitaría comprobar la ausencia de actividad sospechosa en registros suficientemente completos, verificar la integridad de los sistemas y revisar los accesos realizados durante el período de exposición. La ausencia de alertas no demuestra por sí sola que nunca haya ocurrido un compromiso.
-
-Una limitación importante es que el registro de ejemplo no incluye toda la información necesaria para atribuir acciones a un usuario o identificar la IP de origen. Tampoco se realizaron análisis forenses, pruebas de explotación ni verificaciones sobre servidores reales.
-
-Por lo tanto, la conclusión adecuada es que se identificaron versiones vulnerables y se verificó su actualización, pero no se puede afirmar que hayan existido ataques efectivos ni descartar incidentes históricos con la información disponible.
+Se verificaron las actualizaciones y el funcionamiento básico, pero no se realizaron análisis forenses ni pruebas de explotación, respetando las restricciones del ejercicio.
 
 ## 4. Transferencia
 
-El procedimiento utilizado puede aplicarse a otra vulnerabilidad, por ejemplo CVE-2026-115560, mencionada en el material de la cátedra.
+El mismo procedimiento podría aplicarse a una vulnerabilidad distinta, como CVE-2026-115560, mencionada en el material de la cátedra.
 
-Ante una alerta sobre una vulnerabilidad diferente, el primer paso sería consultar su aviso oficial para determinar el componente afectado, las versiones vulnerables, el tipo de impacto y las correcciones disponibles.
+Primero se consultaría el aviso oficial para identificar el componente, las versiones afectadas, el impacto y la corrección disponible. Después se inventariarían los sistemas involucrados, incluyendo runtimes, dependencias e imágenes Docker.
 
-Después se realizaría un inventario de los activos que utilizan ese componente, considerando no solo las dependencias declaradas por las aplicaciones, sino también los runtimes, bibliotecas incorporadas e imágenes de contenedores.
+La prioridad dependería del CVSS, la explotación real, la exposición y la criticidad del negocio. Se definirían responsables, plazos y mitigaciones temporales, seguidos del parche y las pruebas funcionales.
 
-La prioridad se establecería según la gravedad técnica, la existencia de explotación real, la exposición de los servicios y la importancia de los datos o procesos del negocio. Una vulnerabilidad con menor puntuación podría requerir una respuesta más urgente si afecta a un servicio público explotado activamente.
-
-Una vez definido el plan, se aplicaría una mitigación temporal cuando fuera necesaria, seguida del parche correspondiente. Cada cambio debería registrar su estado anterior, el resultado posterior, una prueba funcional y un procedimiento de reversión.
-
-Lo que cambiaría respecto del ejercicio sería la evaluación específica del componente y de sus condiciones de explotación. No sería correcto reutilizar automáticamente la misma mitigación de PHP o las mismas versiones de Node.js y Brotli para una vulnerabilidad diferente.
+A diferencia del ejercicio, las medidas concretas deberían adaptarse a la nueva vulnerabilidad. No corresponde reutilizar automáticamente las mitigaciones de PHP o los parches de Brotli sin verificar su aplicabilidad.
 
 ## 5. Lecciones y procesos
 
-El ejercicio permitió comprobar que gestionar una vulnerabilidad no consiste solamente en instalar una actualización. Primero es necesario conocer qué servicios existen, qué versiones utilizan, cómo están expuestos y qué impacto tendría una interrupción.
+El ejercicio demostró que gestionar vulnerabilidades implica más que actualizar software: requiere identificar activos, evaluar riesgos, decidir prioridades y verificar resultados.
 
-Una mejora prioritaria sería mantener un inventario actualizado de aplicaciones, runtimes, dependencias e imágenes Docker. Esto permitiría identificar rápidamente los activos afectados cuando se publica una nueva alerta.
+Como mejoras, se propone mantener un inventario actualizado, centralizar registros, definir responsables y establecer procedimientos de cambios con evidencias antes/después y planes de reversión.
 
-También resulta fundamental establecer un procedimiento de cambios que contemple prioridades, responsables, evidencia previa, aplicación del parche, pruebas posteriores y posibilidad de reversión.
+La comunicación con gerencia debe explicar el riesgo, las medidas adoptadas, los resultados comprobados y las limitaciones existentes, evitando afirmaciones que no estén respaldadas.
 
-Desde el punto de vista de detección, sería conveniente centralizar los registros, mejorar la visibilidad de los procesos y relacionar los eventos del sistema con las solicitudes recibidas por las aplicaciones.
-
-Por último, la comunicación con gerencia debería centrarse en explicar qué riesgo existe, qué decisiones se tomaron, cuáles fueron los resultados comprobados y qué incertidumbres permanecen.
-
-La principal conclusión es que una respuesta efectiva combina inventario, priorización, mitigación, actualización, verificación y comunicación. La evidencia obtenida debe respaldar las decisiones, y aquello que no pudo comprobarse debe declararse expresamente.
+La principal conclusión es que una respuesta efectiva combina **prevención, mitigación, parcheo, detección, verificación y comunicación**, con decisiones justificadas mediante evidencia.
