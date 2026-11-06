@@ -72,15 +72,55 @@ También cambiaría si aparecieran indicadores de explotación activa en la API 
 
 ## 3. Mitigación, parche y reversión
 
-
 | Fecha/hora | Activo | Cambio | Antes | Después | Reversión |
-|------------|--------|--------|-------|---------|-----------|
-| 06/11/2026 | Portal PHP | Mitigación temporal: se modificó `laboratorio/php/php.ini`, deshabilitando `session.upload_progress.enabled`, y se reinició `php-lab`. | `session.upload_progress.enabled=1`. Evidencia: `capturas/03-php-antes-mitigacion.txt`. | `session.upload_progress.enabled=0`. Los tres contenedores permanecieron `healthy`. Evidencias: `capturas/04-php-despues-mitigacion.txt` y `capturas/05-php-post-mitigacion-ps.txt`. | Restaurar `session.upload_progress.enabled = 1` en `php/php.ini`, reiniciar con `docker compose restart php-lab` y verificar el valor. Esta reversión reactivaría la configuración vulnerable, por lo que solo se consideraría ante una necesidad justificada y con controles compensatorios. |
+|---|---|---|---|---|---|
+| 06/11/2026 | Portal PHP | Mitigación temporal: se modificó `laboratorio/php/php.ini`, deshabilitando `session.upload_progress.enabled`, y se reinició `php-lab`. | `session.upload_progress.enabled=1`. Evidencia: `capturas/03-php-antes-mitigacion.txt`. | `session.upload_progress.enabled=0`. Los tres servicios permanecieron `healthy`. Evidencias: `capturas/04-php-despues-mitigacion.txt` y `capturas/05-php-post-mitigacion-ps.txt`. | Restaurar `session.upload_progress.enabled = 1` en `php/php.ini`, reiniciar `php-lab` y verificar. Reintroduciría el riesgo, por lo que solo se consideraría con justificación y controles compensatorios. |
+| 06/11/2026 | Portal PHP | Actualización mediante `./scripts/parchear.sh`. | PHP 8.3.35 con Apache y mod_php. | PHP 8.3.36; mitigación `session.upload_progress.enabled=0` mantenida; contenedor `healthy` y respuesta HTTP correcta. | Propuesta no ejecutada: volver a la imagen `php:8.3.35-apache`, recrear `php-lab` y verificar. Reintroduciría la versión vulnerable. |
+| 06/11/2026 | API Node.js | Actualización del runtime mediante `./scripts/parchear.sh`. | Node.js 22.23.3 con Brotli integrado 1.1.0. | Node.js 22.23.4; Express 5.3.0; contenedor `healthy` y API funcionando. | Propuesta no ejecutada: volver a la imagen Node.js `22.23.3-bookworm-slim`, recrear `node-lab` y verificar. Reintroduciría la versión vulnerable. |
+| 06/11/2026 | Servicio Python | Actualización de Brotli mediante `./scripts/parchear.sh`. | Brotli 1.0.9. | Brotli 1.2.1; contenedor `healthy` y respuesta HTTP 200. | Propuesta no ejecutada: volver a la imagen del laboratorio con Brotli `1.0.9`, recrear `py-lab` y verificar. Reintroduciría la versión vulnerable. |
 
+**Evidencias del proceso:**
 
-**Prueba funcional mínima:** _¿qué verificaron para saber que la app sigue viva?_
+- `capturas/01-arranque-inventario.txt`: arranque inicial, versiones vulnerables y estado de los contenedores.
+- `capturas/02-apache-modulos.txt`: módulos de Apache; confirma la presencia de `php_module`.
+- `capturas/03-php-antes-mitigacion.txt`: configuración inicial de PHP, con `session.upload_progress.enabled=1`.
+- `capturas/04-php-despues-mitigacion.txt`: verificación de la mitigación, con `session.upload_progress.enabled=0`.
+- `capturas/05-php-post-mitigacion-ps.txt`: servicios en estado `healthy` después de mitigar PHP.
+- `capturas/06-parche.txt`: ejecución del script de parcheo y versiones corregidas de PHP, Node.js y Brotli.
+- `capturas/07-post-parche-ps.txt`: estado `healthy` de los tres servicios después del parche.
+- `capturas/08-prueba-node.txt`: respuesta funcional de la API Node.js.
+- `capturas/09-prueba-php.txt`: respuesta HTTP del portal PHP.
+- `capturas/10-prueba-python.txt`: respuesta HTTP 200 del servicio Python.
 
-**Qué no se pudo probar:** _declararlo explícitamente._
+**Prueba funcional mínima:**
+
+Después de aplicar los parches, se verificó el funcionamiento básico de los tres servicios:
+
+1. **Portal PHP:** respondió correctamente a una solicitud HTTP local y devolvió 1093 bytes. Se comprobó además que la mitigación `session.upload_progress.enabled=0` permaneció activa.
+2. **API Node.js:** respondió correctamente desde su endpoint principal e informó Node.js `v22.23.4`, Express `5.3.0` y Brotli integrado `1.1.0`. Este último valor no implica ausencia del parche, ya que la corrección está incorporada en la versión actualizada del runtime Node.js.
+3. **Servicio Python:** respondió con HTTP 200 e informó Python `3.11.18` y Brotli `1.2.1`.
+
+Los tres contenedores quedaron en estado `healthy` después del parche.
+
+**Qué no se pudo probar:**
+
+No se ejecutaron exploits ni pruebas de explotación, respetando las restricciones del laboratorio establecidas por la cátedra. Por lo tanto, no se verificó mediante un ataque que las vulnerabilidades ya no pudieran explotarse.
+
+Tampoco se realizaron pruebas de carga, regresión completa, funcionamiento con usuarios reales ni verificaciones sobre un entorno de producción. Las pruebas funcionales realizadas demuestran el funcionamiento básico de los servicios, pero no garantizan la ausencia de otros errores.
+
+Los procedimientos de reversión fueron documentados, pero no ejecutados. Una reversión a las versiones anteriores reintroduciría vulnerabilidades conocidas y requeriría autorización y controles compensatorios.
+
+**Ventana de cambio y alcance:**
+
+Los cambios se realizaron el 06/11/2026 sobre el laboratorio Docker aislado proporcionado por la cátedra. No se modificaron sistemas de producción ni se ejecutaron exploits.
+
+Primero se aplicó la mitigación temporal de PHP. Posteriormente, se actualizaron las versiones de PHP, Node.js y Brotli mediante el script provisto por el profesor, se recrearon los servicios y se realizaron las verificaciones correspondientes.
+
+El parche de PHP quedó en la versión `8.3.36`, Node.js en `22.23.4` y Brotli de Python en `1.2.1`.
+
+Los plazos propuestos en la sección 2 representan objetivos de intervención ante un incidente en producción y no tiempos medidos durante este laboratorio.
+
+La reversión se mantuvo únicamente como procedimiento documentado para una eventual falla grave posterior al cambio.
 
 ---
 
