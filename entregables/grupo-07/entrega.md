@@ -19,11 +19,19 @@
 
 | Activo | Versión | ¿Expuesto a Internet? | ¿Procesa contenido no confiable? | ¿Afectado? | Evidencia |
 |--------|---------|:---------------------:|:--------------------------------:|:----------:|-----------|
-| Portal PHP | | | | | |
-| API Node.js | | | | | |
-| Servicio Python | | | | | |
+| Portal PHP | PHP 8.3.35, Apache con mod_php, `session.upload_progress.enabled=1` | No | Sí | Sí | `capturas/01-arranque-inventario.txt` y `capturas/02-apache-modulos.txt` |
+| API Node.js | Node.js 22.23.3, Brotli integrado 1.1.0 | No | Sí | Sí | `capturas/01-arranque-inventario.txt` |
+| Servicio Python | Python 3.11.18, Brotli 1.0.9 | No | Sí | Sí | `capturas/01-arranque-inventario.txt` |
 
-**Supuestos de exposición:** _¿qué asumieron sobre el proxy, la red y el despliegue?_
+**Supuestos de exposición:**
+
+En el laboratorio, ninguno de los tres servicios está expuesto directamente a Internet, ya que `docker-compose.yml` utiliza una red interna (`internal: true`) y no publica puertos hacia el exterior.
+
+El portal PHP procesa solicitudes HTTP y permite la recepción de archivos. La API Node.js recibe contenido mediante el endpoint `/decode`, que utiliza el decodificador Brotli. El servicio Python también puede recibir y descomprimir contenido Brotli mediante solicitudes HTTP.
+
+Los tres servicios utilizan versiones afectadas por las vulnerabilidades analizadas. Sin embargo, estar afectados no implica que hayan sido comprometidos.
+
+Para analizar un posible entorno de producción, suponemos que el portal PHP y la API Node.js podrían estar publicados detrás de un proxy inverso, mientras que el servicio Python permanecería accesible únicamente desde la red interna. Estos son supuestos de arquitectura, no condiciones comprobadas en el laboratorio.
 
 ---
 
