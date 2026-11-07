@@ -147,23 +147,43 @@ negativo podría tener._
 ## 5. Contención
 
 | Control | Configuración | Evidencia | ¿Funciona? |
-|---------|---------------|-----------|:----------:|
-| Red sin salida | `internal: true` | | |
-| Usuario sin privilegios | | | |
-| Filesystem read-only | | | |
-| Capabilities mínimas | | | |
-| Límites de memoria/PIDs | | | |
-| Rechazo de Brotli innecesario | | | |
+|---|---|---|---|
+| Red sin salida | Red Docker con `internal: true`, sin puertos publicados al host. | `capturas/11-red-interna.txt` y `capturas/13-verificacion-contencion.txt` | Sí. Los tres servicios fallaron al intentar conectarse a Internet. |
+| Usuario sin privilegios | Node.js utiliza `node` (UID 1000); Python utiliza `nobody` (UID 65534). Apache tiene un proceso principal `root` y trabajadores `www-data`. | `capturas/14-usuarios-contenedores.txt` y `capturas/15-procesos-php.txt` | Parcial. Node.js y Python ejecutan sus procesos con usuarios sin privilegios; Apache conserva un proceso principal como `root`. |
+| Filesystem read-only | `read_only: true` en los tres contenedores. | `capturas/12-controles-contenedores.txt` | Configuración confirmada mediante Docker Inspect; no se realizó una prueba directa de escritura. |
+| Capabilities mínimas | `cap_drop: ALL` y `no-new-privileges:true` en los tres contenedores. | `capturas/12-controles-contenedores.txt` | Configuración confirmada mediante Docker Inspect; no se realizaron pruebas de escalada de privilegios. |
+| Límites de memoria/PIDs | PHP y Node.js: 256 MB y 100 procesos. Python: 128 MB y 50 procesos. | `capturas/12-controles-contenedores.txt` | Límites configurados y verificados; no se realizaron pruebas de agotamiento de recursos. |
+| Rechazo de Brotli innecesario | Medida compensatoria propuesta: rechazar solicitudes con contenido Brotli cuando la funcionalidad no sea necesaria. | Recomendación defensiva; sin evidencia de aplicación en el laboratorio. | No probado. |
 
-**Prueba de salida a Internet:** _resultado en los tres servicios._
+**Prueba de salida a Internet:**
 
----
+Se ejecutó `scripts/verificar-contencion.sh` sobre los tres servicios. Los resultados fueron:
+
+- **PHP:** `SIN SALIDA`.
+- **Node.js:** `SIN SALIDA TypeError`.
+- **Python:** `SIN SALIDA URLError`.
+
+Los tres intentos fallaron, como se esperaba para un laboratorio con una red Docker interna. La evidencia se encuentra en `capturas/13-verificacion-contencion.txt`.
+
+**Riesgos residuales y recomendaciones:**
+
+La contención reduce la exposición y limita algunas consecuencias de una posible explotación, pero no elimina las vulnerabilidades del software.
+
+Se recomienda mantener las versiones corregidas, evaluar la posibilidad de ejecutar Apache completamente sin privilegios de `root` y verificar periódicamente las restricciones configuradas.
+
+Además, en un entorno de producción sería conveniente realizar pruebas controladas de escritura, privilegios y consumo de recursos para comprobar la eficacia de los controles que aquí solamente se inspeccionaron.
 
 ## 6. Conclusión (5 líneas)
 
-_¿Qué harían distinto en las primeras 2 horas?_
+En las primeras dos horas priorizaríamos identificar los servicios expuestos, confirmar las versiones vulnerables y preservar los registros para investigar posibles compromisos.
 
----
+Aplicaríamos inmediatamente las mitigaciones disponibles, comenzando por PHP debido a su criticidad y antecedentes de explotación, y prepararíamos los parches correspondientes.
+
+Mantendríamos el aislamiento de red, los permisos restringidos, el sistema de archivos de solo lectura y los límites de recursos para reducir el impacto de una posible explotación.
+
+Coordinaríamos la respuesta con los responsables técnicos y comunicaríamos a gerencia los riesgos, las medidas aplicadas y las limitaciones de la evidencia disponible.
+
+Finalmente, verificaríamos el funcionamiento de los servicios después de los cambios y estableceríamos un seguimiento de los indicadores de compromiso y de los controles de contención.
 
 ## 7. Checklist antes de entregar
 
