@@ -1,17 +1,20 @@
 # Entregable — TP PHP2Shell / Node2Shell
 
-**Grupo:** _completar_ · **Fork del grupo:** _completar_ · **Rama:** `grupo-XX`
-**Fecha:** jueves 29/10/2026
+**Grupo:** 07
+**Fork del grupo:** [TomasTerruli/goys-2026-tp-vulnerabilidades](https://github.com/TomasTerruli/goys-2026-tp-vulnerabilidades)
+**Rama:** `grupo-07`
+
+**Fecha de entrega original:** 29/10/2026
+**Última actualización:** 08/11/2026
 
 | Integrante | Usuario de GitHub | Rol en el TP |
 |---|---|---|
-| | | |
-| | | |
-| | | |
-| | | |
+| Tomás Terruli | `TomasTerruli` | Inventario, mitigación, parche y pruebas funcionales |
+| Martina Castellani | `Marticaste144` | Contención de contenedores y evidencias de seguridad |
+| Pilar Giannelli | `pilargiannelli` | Detección, análisis de logs e integración del entregable |
 
-> Roles sugeridos: inventario, cambios/parche, detección, contención/comunicación.
-> Todos tienen que poder explicar su parte y una parte ajena.
+> Los roles se asignaron según los aportes realizados por cada integrante.
+> Todos deben poder explicar su parte y una parte ajena.
 
 ---
 
@@ -191,14 +194,15 @@ Finalmente, verificaríamos el funcionamiento de los servicios después de los c
 
 ## 7. Checklist antes de entregar
 
-- [ ] El laboratorio arrancó y los 3 servicios quedaron `healthy`.
-- [ ] Inventario con evidencia (versión, SAPI, configuración).
-- [ ] Matriz con decisión y plazo.
-- [ ] Parche aplicado y verificado; reversión documentada.
-- [ ] Al menos 3 controles de contención probados.
-- [ ] `deteccion.md` completo.
-- [ ] `informe.md` individual completo.
-- [ ] Sin claves, tokens ni placeholders.
-- [ ] Repo pusheado y PR abierto.
+- [x] El laboratorio arrancó y los 3 servicios quedaron `healthy`.
+- [x] Inventario con evidencia (versión, SAPI y configuración).
+- [x] Matriz con decisión y plazo.
+- [x] Parche aplicado y verificado; reversión documentada.
+- [x] Al menos 3 controles de contención configurados y verificados: aislamiento de red, filesystem de solo lectura y restricción de privilegios.
+- [x] `deteccion.md` completo.
+- [x] Informes individuales completos: `informe-tomas.md`, `informe-marti.md` e `informe-pili.md`.
+- [x] Sin claves, tokens ni placeholders en los entregables.
+- [x] Rama `grupo-07` pusheada al fork del grupo.
+- [ ] Pull Request abierto hacia el repositorio original.
 
-Checklist completa: [`../docs/checklist-entrega.md`](../docs/checklist-entrega.md).
+Checklist completa: [`docs/checklist-entrega.md`](../../docs/checklist-entrega.md).
